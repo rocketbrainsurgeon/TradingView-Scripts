@@ -1,0 +1,52 @@
+//@version=4
+study("Donchian Ichimoku Hybrid",shorttitle="DIH",overlay=true)
+
+dc_length = input(title="Length",defval=20)
+length = bar_index > dc_length ? dc_length : bar_index+1
+src = input(title="Source", type=input.source, defval=hl2)
+system = input(title="System",options=["None","Trend","Retracement"],defval="None")
+darkMode = input(title="Dark Mode",type=input.bool,defval=false)
+
+// === DONCHIAN CHANNEL ===
+donchian_channel(l)=>
+    t = highest(l)
+    b = lowest(l)
+    ba = avg(t,b)
+    tba = avg(t,ba)
+    bba = avg(b,ba)
+    [t,b,ba,tba,bba]
+
+// == CHANNELS ===
+[top,bottom,basis,top_basis,bottom_basis] = donchian_channel(length)
+
+// === MARKET STATE ===
+extreme = high == top or low == bottom
+expansionUp = src > top[length] and high==top
+expansionDown = src < bottom[length] and low==bottom
+trend = barssince(expansionUp) < barssince(expansionDown)
+trendStart = expansionUp or expansionDown
+trendEnd = not trendStart and cross(src,basis)
+trending = barssince(trendStart) < barssince(trendEnd or bar_index==0)
+breakout = (expansionUp or expansionDown) and not trending[1]
+trendFlip = (trend and not trend[1]) or (trend[1] and not trend)
+rangeStart = (trendEnd and trending[1]) or (trendFlip and trending[1])
+retracementTrigger = trending and (crossunder(src,top_basis) or crossover(src,bottom_basis))
+retracement = retracementTrigger and not retracementTrigger[1]
+
+// === DISPLAY STRATEGY ===
+barcolor(trending and trend ? #2aa599 : trending and not trend ? #ee5451 : not trending ? color.gray : color.gray)
+t = plot(top,color=#3bb3e4,linewidth=2,transp=65,title="Upper")
+b = plot(bottom,color=#3bb3e4,linewidth=2,transp=65,title="Lower")
+ba = plot(basis,color=#3bb3e4,transp=65,linewidth=2,title="Basis")
+tba = plot(top_basis,color=#3bb3e4,linewidth=2,transp=100,title="Upper Basis")
+bba = plot(bottom_basis,color=#3bb3e4,linewidth=2,transp=100,title="Lower Basis")
+fill(tba,ba,transp=90,color=trend and trending ? #2aa599 : darkMode ? #191e28 : color.white,title="Upper Basis")
+fill(ba,bba,transp=90,color=not trend and trending ? #ee5451 : darkMode ? #191e28: color.white,title="Lower Basis")
+plotshape(system == "Retracement" and trend and retracement,style=shape.triangleup,color=color.green,size=size.small)
+plotshape(system == "Retracement" and not trend and retracement,style=shape.triangledown,color=color.red,size=size.small)
+plotshape(system == "Trend" and trend and trendFlip,style=shape.triangleup,color=color.green,size=size.small)
+plotshape(system == "Trend" and not trend and trendFlip,style=shape.triangledown,color=color.red,size=size.small)
+
+alertcondition(retracement,title="Retracement",message='{{ticker}} RETRACEMENT at {{close}}')
+alertcondition(rangeStart,title="Range",message='{{ticker}} is RANGING at {{close}}')
+alertcondition(trendFlip,title="Trend",message='TREND CHANGE on {{ticker}} at {{close}}')

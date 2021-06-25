@@ -1,0 +1,31 @@
+//@version=4
+strategy(title="Generic Strategy", shorttitle="GS", overlay=true, pyramiding=0, default_qty_type=strategy.percent_of_equity, default_qty_value=100, currency=currency.USD,commission_type=strategy.commission.percent,commission_value=0.1)
+
+// === GENERAL INPUTS ===
+//strategy start date
+start_day = input(defval=1, title="Backtest Start Day")
+start_month = input(defval=1, title="Backtest Start Month")
+start_year = input(defval=2020, title="Backtest Start Year")
+
+// === LOGIC ===
+fast = ema(hl2, 15)
+slow = ema(hl2, 45)
+plot(fast)
+plot(slow)
+
+// === STRATEGY - LONG POSITION EXECUTION ===
+enterLong() =>
+    crossover(fast,slow) and 
+       time > timestamp(start_year, start_month, start_day, 01, 01)
+exitLong() =>
+    false
+strategy.entry(id="Long", long=strategy.long, when=enterLong())
+strategy.close(id="Long", when=exitLong())
+// === STRATEGY - SHORT POSITION EXECUTION ===
+enterShort() =>
+    crossunder(fast,slow) and 
+       time > timestamp(start_year, start_month, start_day, 01, 01)
+exitShort() =>
+    false
+strategy.entry(id="Short", long=strategy.short, when=enterShort())
+strategy.close(id="Short", when=exitShort())

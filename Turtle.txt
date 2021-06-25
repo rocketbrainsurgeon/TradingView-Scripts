@@ -1,0 +1,36 @@
+//@version=4
+study("Turtle",shorttitle="T",overlay=true)
+
+trend_length = input(title="Trend Length",defval=20)
+stop_length = input(title="Stop Length",defval=10)
+t_length = bar_index > trend_length ? trend_length : bar_index+1
+s_length = bar_index > stop_length ? stop_length : bar_index+1
+
+// === DONCHIAN CHANNEL ===
+donchian_channel(l)=>
+    t = highest(l)
+    b = lowest(l)
+    ba = avg(t,b)
+    [t,b,ba]
+
+// == CHANNELS ===
+[top,bottom,_] = donchian_channel(trend_length)
+[stop,sbottom,_] = donchian_channel(stop_length)
+
+// === MARKET STATE ===
+expansionUp = high==top
+expansionDown = low==bottom
+trend = barssince(expansionUp) < barssince(expansionDown or bar_index==0)
+trendStart = expansionUp or expansionDown
+trendFlip = (trend and not trend[1]) or (trend[1] and not trend)
+trendEnd = (trend and low==sbottom) or (not trend and high==stop)
+trending = barssince(trendStart) <= barssince(trendEnd or bar_index==0)
+rangeStart = (trendEnd and trending[1]) or (trendFlip and trending[1])
+
+// === DISPLAY STRATEGY ===
+barcolor(trending and trend ? #2aa599 : trending and not trend ? #ee5451 : not trending ? color.gray : color.gray)
+t = plot(top,color=#3bb3e4,linewidth=2,transp=65,title="Upper")
+b = plot(bottom,color=#3bb3e4,linewidth=2,transp=65,title="Lower")
+plot(stop,color=#3bb3e4,linewidth=2,transp=65)
+plot(sbottom,color=#3bb3e4,linewidth=2,transp=65)
+fill(t,b,transp=90,color=#3bb3e4,title="Background")
